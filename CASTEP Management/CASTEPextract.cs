@@ -17,7 +17,7 @@ namespace CASTEP_Management
         Regex cellVolumnReg = new Regex(@" *Current cell volume *= *([-+]?\d*\.\d+|\d+) *A\*\*3");
         Regex aReg = new Regex(@" +a = *([-+]?\d*\.\d+|\d+) *");
         Regex angleReg = new Regex(@" +alpha = *([-+]?\d*\.\d+|\d+) *");
-        Regex energyReg = 
+        Regex energyReg = new Regex(@" *NB est\. .+K energy *\(.*\) *= *([-+]?\d*\.\d+|\d+) *eV *");
         List<Regex> contentReg = new List<Regex>();
 
         Regex startFocusedContentReg = new Regex(@"BFGS: Final Configuration:");
@@ -65,9 +65,9 @@ namespace CASTEP_Management
             return lines;
         }
 
-        public CASTEPsubObj SetObjProperty(string focusContent)
+        public CASTEPsubObj SetObjProperty(string focusContent, ref CASTEPsubObj obj)
         {
-            CASTEPsubObj obj = new CASTEPsubObj();
+            //CASTEPsubObj obj = new CASTEPsubObj();
             Match pressureMatch = pressureReg.Match(focusContent);
             if (pressureMatch.Success)
                 obj.pressure = double.Parse(pressureMatch.Groups[1].Value);
@@ -104,6 +104,13 @@ namespace CASTEP_Management
             else
                 obj.enthalpy = 0;
 
+            //Match energyMatch = energyReg.Match(focusContent);
+            //if (energyMatch.Success)
+            //    obj.energy = double.Parse(energyMatch.Groups[1].Value);
+            //else
+            //    obj.energy = 0;
+
+
             return obj;
         }
 
@@ -119,6 +126,7 @@ namespace CASTEP_Management
 
                 string focusContent = "";
                 bool isStartFocus = false;
+                CASTEPsubObj obj = new CASTEPsubObj(); 
                 foreach (string line in lines)
                 {
                     if (startFocusedContentReg.Match(line).Success)
@@ -174,10 +182,14 @@ namespace CASTEP_Management
                         if (functionalMatch.Success)
                             output.functional = functionalMatch.Groups[1].Value;
                     }
+
+                    Match energyMatch = energyReg.Match(line);
+                    if (energyMatch.Success)
+                        obj.energy = double.Parse(energyMatch.Groups[1].Value);
                 }
 
-                CASTEPsubObj obj = SetObjProperty(focusContent);
-                obj.energy = obj.enthalpy - obj.cellVolumn * obj.pressure;
+                SetObjProperty(focusContent,ref obj);
+                //obj.energy = obj.enthalpy - obj.cellVolumn * obj.pressure;
                 obj.V = obj.cellVolumn / output.content;
                 obj.E = obj.energy / output.content;
                 obj.stress = stressList[i];
